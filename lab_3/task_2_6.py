@@ -1,30 +1,46 @@
 import pygame
 import numpy as np
 
-PINK = (255, 175, 128)
+PEACH = (255, 175, 128)
 GREEN = (0, 104, 55)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 FPS = 30
-W_WIDTH, W_HEIGHT = 640, 480
+W_WIDTH, W_HEIGHT = 800, 600
 
 
 def draw_branch(surface, left_dir, start_angle, stop_angle, num_leaves, rect):
+    """Draws a branch of the tree.
+
+    :param surface: surface on which the tree is being drawn.
+    :param left_dir: by default the branch is drawn facing right. If the parameter is True, it is reflected
+     relative to the vertical axes.
+    :param start_angle: branch is drawn as an arc of an ellipse. This is the start angle of the arc.
+    :param stop_angle:  branch is drawn as an arc of an ellipse. This is the end angle of the arc.
+    :param num_leaves: number of leaves growing on the branch.
+    :param rect: based on rect a separate surface is created for the branch. The surface is then attached via
+     blit() method to the main surface.
+    :return: None.
+    """
     width, height = surface.get_width(), surface.get_height()
     branch = pygame.Surface((rect[2], rect[3]))
-    branch.fill(PINK)
+    branch.fill(PEACH)
+    branch.set_colorkey(PEACH)
 
     for i in range(num_leaves):
-        leave = pygame.Surface((int(width / 9), int(height / 30)))
-        leave.fill(PINK)
-        pygame.draw.ellipse(leave, GREEN, ((0, 0), (int(width / 9), int(height / 30))))
+        leave = pygame.Surface((int(height / 8), int(width / 36)))
+        leave.fill(PEACH)
+        leave.set_colorkey(PEACH)
+        pygame.draw.ellipse(leave, GREEN, ((0, 0), (int(height / 8), int(width / 35))))
         leave = pygame.transform.rotate(leave, 100)
 
-        angle = start_angle + i * np.pi / 8
-        x = int(np.sign(np.tan(angle)) * ((rect[2] / 2)**(-2) + (np.tan(angle) / (rect[3] / 2)) ** 2) ** (-0.5))
-        y = - int(x * np.tan(angle))
-        x += int(rect[2] / 2)
-        y += int(rect[3] / 2)
+        angle = start_angle + i * np.pi / 10
+        x = np.sign(np.tan(angle)) * ((rect[2] / 2)**(-2) + (np.tan(angle) / (rect[3] / 2)) ** 2) ** (-0.5)
+        y = - x * np.tan(angle)
+        x += rect[2] / 2
+        y += rect[3] / 2
+        x = int(x)
+        y = int(y)
         branch.blit(leave, (x, y))
 
     pygame.draw.arc(branch, GREEN, ((0, 0), (rect[2], rect[3])), start_angle, stop_angle, 3)
@@ -36,6 +52,11 @@ def draw_branch(surface, left_dir, start_angle, stop_angle, num_leaves, rect):
 
 
 def draw_trunk(surface):
+    """Draws the trunk of the tree.
+
+    :param surface: surface on which the tree is being drawn.
+    :return: None.
+    """
     width, height = surface.get_width(), surface.get_height()
 
     # two bottom rectangles
@@ -48,7 +69,8 @@ def draw_trunk(surface):
 
     # second to top rectangle
     rotated_rect_1 = pygame.Surface((int(width / 20), int(height / 5.5)))
-    rotated_rect_1.fill(PINK)
+    rotated_rect_1.fill(PEACH)
+    rotated_rect_1.set_colorkey(PEACH)
     pygame.draw.line(rotated_rect_1, GREEN,
                      (int(width / 40), int(0.1 * height / 12)),
                      (int(width / 40), int(2.1 * height / 12)),
@@ -59,7 +81,8 @@ def draw_trunk(surface):
 
     # top rectangle
     rotated_rect_2 = pygame.Surface((int(width / 30), int(height / 4)))
-    rotated_rect_2.fill(PINK)
+    rotated_rect_2.fill(PEACH)
+    rotated_rect_2.set_colorkey(PEACH)
     pygame.draw.line(rotated_rect_2, GREEN,
                      (int(width / 60), 0),
                      (int(width / 60), int(height / 4)),
@@ -70,13 +93,19 @@ def draw_trunk(surface):
 
 
 def draw_tree(surface):
-    surface.fill(PINK)
+    """Draws a tree.
+
+    :param surface: the tree is drawn on the surface.
+    :return: None.
+    """
+    surface.fill(PEACH)
+    surface.set_colorkey(PEACH)
     width, height = surface.get_width(), surface.get_height()
 
     draw_trunk(surface)
 
     # right branches
-    draw_branch(surface, False, np.pi / 2.5, np.pi, 4, (int(width / 2 + width / 10), int(0.8 * height / 4),
+    draw_branch(surface, False, np.pi / 2.5, np.pi, 5, (int(width / 2 + width / 10), int(0.8 * height / 4),
                                                         int(width / 2), int(height / 4))
                 )
     draw_branch(surface, False, np.pi / 3, np.pi, 3, (int(width / 2 + width / 30), int(1.7 * height / 4),
@@ -86,16 +115,28 @@ def draw_tree(surface):
     draw_branch(surface, True, np.pi / 3, np.pi, 3, (int(width / 2 - 11 * width / 30), int(1.6 * height / 4),
                                                      int(width / 3), int(height / 4))
                 )
-    draw_branch(surface, True, np.pi / 2.5, np.pi, 4, (int(width / 2 - 8 * width / 15), int(0.6 * height / 4),
+    draw_branch(surface, True, np.pi / 2.5, np.pi, 5, (int(width / 2 - 8 * width / 15), int(0.6 * height / 4),
                                                        int(width / 2), int(height / 4))
                 )
 
 
 def draw_body(surface, rect):
+    """Draws the body of the panda.
+
+    :param surface: surface on which the panda is being drawn.
+    :param rect: rectangle, containing the body.
+    :return: None
+    """
     pygame.draw.ellipse(surface, WHITE, rect)
 
 
 def draw_rightmost_leg(surface, rect):
+    """Draws the rightmost leg of the panda.
+
+    :param surface: surface on which the panda is being drawn.
+    :param rect: rectangle, containing the leg.
+    :return: None
+    """
     width, height = rect[2], rect[3]
     points = [
         (int(rect[0] + width * 0.75), int(rect[1] + height * 0.05)),
@@ -115,6 +156,12 @@ def draw_rightmost_leg(surface, rect):
 
 
 def draw_middle_leg(surface, rect):
+    """Draws the middle leg of the panda.
+
+    :param surface: surface on which the panda is being drawn.
+    :param rect: rectangle, containing the leg.
+    :return: None
+    """
     width, height = rect[2], rect[3]
     points = [
         (int(rect[0] + width * 0.9), int(rect[1] + height * 0.05)),
@@ -133,6 +180,12 @@ def draw_middle_leg(surface, rect):
 
 
 def draw_leftmost_leg(surface, rect):
+    """Draws the leftmost leg of the panda.
+
+    :param surface: surface on which the panda is being drawn.
+    :param rect: rectangle, containing the leg.
+    :return: None
+    """
     width, height = rect[2], rect[3]
     points = [
         (int(rect[0] + width * 0.25), rect[1]),
@@ -152,6 +205,12 @@ def draw_leftmost_leg(surface, rect):
 
 
 def draw_head(surface, rect):
+    """Draws the head of the panda.
+
+    :param surface: surface on which the panda is being drawn.
+    :param rect: rectangle, containing the head.
+    :return: None
+    """
     width, height = rect[2], rect[3]
 
     # ears
@@ -193,7 +252,13 @@ def draw_head(surface, rect):
 
 
 def draw_panda(surface):
-    surface.fill(PINK)
+    """ Draws panda.
+
+    :param surface: the panda is drawn on the surface.
+    :return: None.
+    """
+    surface.fill(PEACH)
+    surface.set_colorkey(PEACH)
     width, height = surface.get_width(), surface.get_height()
 
     draw_body(surface, (int(width / 10), int(height / 5),
@@ -214,6 +279,10 @@ def draw_panda(surface):
 
 
 def main():
+    """The main function of the program.
+
+    :return: None
+    """
     pygame.init()
     screen = pygame.display.set_mode([W_WIDTH, W_HEIGHT])
     pygame.display.set_caption("Pandas")
@@ -221,7 +290,7 @@ def main():
     clock = pygame.time.Clock()
     finished = False
 
-    screen.fill(PINK)
+    screen.fill(PEACH)
 
     while not finished:
         clock.tick(FPS)
@@ -233,9 +302,9 @@ def main():
         draw_tree(tree_1)
         screen.blit(tree_1, (int(W_WIDTH / 3.6), 0))
 
-        tree_2 = pygame.Surface((int(W_WIDTH / 2.6), int(W_HEIGHT / 2)))
+        tree_2 = pygame.Surface((int(W_WIDTH / 3.5), int(W_HEIGHT / 2)))
         draw_tree(tree_2)
-        screen.blit(tree_2, (-int(W_WIDTH / 20), int(W_HEIGHT / 10)))
+        screen.blit(tree_2, (int(W_WIDTH / 5.8), int(W_HEIGHT / 7)))
 
         panda_1 = pygame.Surface((int(W_WIDTH / 3.2), int(W_HEIGHT / 2.5)))
         draw_panda(panda_1)
