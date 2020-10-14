@@ -2,7 +2,6 @@ import pygame
 import pygame.draw
 from random import randint
 import numpy as np
-import os.path
 
 FPS = 30
 W_WIDTH, W_HEIGHT = 800, 600
@@ -20,8 +19,19 @@ COLORS = [RED, BLUE, YELLOW, GREEN, MAGENTA, CYAN]
 
 class Square:
     def __init__(self, screen, player_points):
-        self.points = randint(50, 100)
-        self.points += int((player_points / 2) ** 0.5)
+        """ Creates a square object based on how good the player is playing.
+
+        points - number of points given to the player if the square is hit.
+        x, y - position of the center of the square.
+        a - length of the side of the square.
+        vx, vy - velocity of the square.
+        color - color of the square.
+        image - image of the square.
+
+        :param screen: screen, on which the square is drawn.
+        :param player_points: number of points the player scored in the game.
+        """
+        self.points = randint(50, 100) + int((player_points / 2) ** 0.5)
 
         self.x = randint(int(W_WIDTH * 0.1), int(W_WIDTH * 0.9))
         self.y = randint(int(W_HEIGHT * 0.1), int(W_HEIGHT * 0.9))
@@ -69,8 +79,19 @@ class Square:
 
 class Ball:
     def __init__(self, screen, player_points):
-        self.points = randint(20, 50)
-        self.points += int((player_points / 5))
+        """ Creates a ball object based on how good the player is playing.
+
+        points - number of points given to the player if the ball is hit.
+        x, y - position of the center of the ball.
+        r - radius of the ball.
+        vx, vy - velocity of the ball.
+        color - color of the ball.
+        image - image of the ball.
+
+        :param screen: screen, on which the ball is drawn.
+        :param player_points: number of points the player scored in the game.
+        """
+        self.points = randint(20, 50) + int((player_points / 5))
 
         self.x = randint(int(W_WIDTH * 0.1), int(W_WIDTH * 0.9))
         self.y = randint(int(W_HEIGHT * 0.1), int(W_HEIGHT * 0.9))
@@ -102,6 +123,45 @@ class Ball:
         self.image = pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.r)
 
 
+class RussellTeapot:
+    def __init__(self, screen):
+        """ Creates teapot, which cannot be hit.
+
+        :param screen: screen, on which the teapot is drawn.
+        """
+        self.x = randint(int(W_WIDTH * 0.1), int(W_WIDTH * 0.9))
+        self.y = randint(int(W_HEIGHT * 0.1), int(W_HEIGHT * 0.9))
+
+        self.a = 15
+
+        self.color = COLORS[randint(0, 5)]
+
+        self.image = pygame.image.load("teapot.png")
+        self.a = self.image.get_width()
+        self.b = self.image.get_height()
+        screen.blit(self.image, (self.x, self.y))
+
+    def almost_hit(self, event):
+        hit = False
+        if abs(self.x - (event.pos[0] + event.rel[0])) <= self.a / 2 and \
+                abs(self.y - (event.pos[1] + event.rel[1])) <= self.b / 2:
+            hit = True
+        return hit
+
+    def change_coords(self, event):
+        if event.type == 4 and self.almost_hit(event):
+            self.x += event.rel[0]*2
+            self.y += event.rel[1]*2
+        if self.x > W_WIDTH or self.x < 0:
+            self.x %= W_WIDTH
+        if self.y > W_HEIGHT or self.y < 0:
+            self.y %= W_HEIGHT
+
+    def draw(self, screen):
+        self.image = pygame.image.load("teapot.png")
+        screen.blit(self.image, (int(self.x - self.a/2), int(self.y - self.b/2)))
+
+
 def write_to_file(points):
     """Writes points, scored in this game, to file data.txt.
 
@@ -113,7 +173,7 @@ def write_to_file(points):
 
 
 def read_from_file():
-    """Calculates highest score.
+    """Searches for the highest score in file.
 
     :return: maximum of all the points written in data.txt.
     """
@@ -154,10 +214,11 @@ def main():
     points = 0
     balls = [Ball(screen, points) for i in range(1)]
     squares = [Square(screen, points) for i in range(2)]
+    russell_teapots = [RussellTeapot(screen) for i in range(1)]
 
-    if not os.path.isfile('C:/Users/Dmitr/khromov/lab_4/data.txt'):
-        output = open("data.txt", 'w')
-        output.close()
+    output = open("data.txt", 'a')
+    output.close()
+
     max_points = read_from_file()
 
     while not finished:
@@ -185,10 +246,15 @@ def main():
                     i += 1
                 if not hit:
                     points = max(0, points - 100)
+            elif event.type == pygame.MOUSEMOTION:
+                for russell_teapot in russell_teapots:
+                    russell_teapot.change_coords(event)
         for ball in balls:
             ball.move(screen)
         for square in squares:
             square.move(screen)
+        for russell_teapot in russell_teapots:
+            russell_teapot.draw(screen)
         pygame.display.update()
         screen.fill(BLACK)
 
