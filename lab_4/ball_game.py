@@ -1,6 +1,6 @@
 import pygame
 import pygame.draw
-from random import randint
+import random
 import numpy as np
 
 FPS = 30
@@ -31,17 +31,17 @@ class Square:
         :param screen: screen, on which the square is drawn.
         :param player_points: number of points the player scored in the game.
         """
-        self.points = randint(50, 100) + int((player_points / 2) ** 0.5)
+        self.points = random.randint(50, 100) + int((player_points / 2) ** 0.5)
 
-        self.x = randint(int(W_WIDTH * 0.1), int(W_WIDTH * 0.9))
-        self.y = randint(int(W_HEIGHT * 0.1), int(W_HEIGHT * 0.9))
+        self.x = random.randint(int(W_WIDTH * 0.1), int(W_WIDTH * 0.9))
+        self.y = random.randint(int(W_HEIGHT * 0.1), int(W_HEIGHT * 0.9))
 
         self.a = int(2 * (W_WIDTH + W_HEIGHT) / self.points)
 
-        self.vx = randint(0, 100 + int(self.points**0.5 * 10))
-        self.vy = randint(0, 100 + int(self.points**0.5 * 10))
+        self.vx = random.randint(0, 100 + int(self.points**0.5 * 10))
+        self.vy = random.randint(0, 100 + int(self.points**0.5 * 10))
 
-        self.color = COLORS[randint(0, 5)]
+        self.color = COLORS[random.randint(0, 5)]
         self.image = pygame.draw.rect(screen, self.color, (int(self.x - self.a / 2),
                                                            int(self.y - self.a / 2),
                                                            self.a, self.a)
@@ -65,8 +65,8 @@ class Square:
         self.x += self.vx * dt
         self.y += self.vy * dt
 
-        self.vx += randint(-(50 + int(self.points)), 50 + int(self.points))
-        self.vy += randint(-(50 + int(self.points)), 50 + int(self.points))
+        self.vx += random.randint(-(50 + int(self.points)), 50 + int(self.points))
+        self.vy += random.randint(-(50 + int(self.points)), 50 + int(self.points))
 
         self.vx = np.sign(self.vx) * min(abs(self.vx), self.points * 10)
         self.vy = np.sign(self.vy) * min(abs(self.vy), self.points * 10)
@@ -91,17 +91,17 @@ class Ball:
         :param screen: screen, on which the ball is drawn.
         :param player_points: number of points the player scored in the game.
         """
-        self.points = randint(20, 50) + int((player_points / 5))
+        self.points = random.randint(20, 50) + int((player_points / 5))
 
-        self.x = randint(int(W_WIDTH * 0.1), int(W_WIDTH * 0.9))
-        self.y = randint(int(W_HEIGHT * 0.1), int(W_HEIGHT * 0.9))
+        self.x = random.randint(int(W_WIDTH * 0.1), int(W_WIDTH * 0.9))
+        self.y = random.randint(int(W_HEIGHT * 0.1), int(W_HEIGHT * 0.9))
 
         self.r = int((W_WIDTH + W_HEIGHT) / self.points)
 
-        self.vx = randint(int(self.points * 20), 100 + int(self.points * 20))
-        self.vy = randint(int(self.points * 20), 100 + int(self.points * 20))
+        self.vx = random.choice((-1, 1)) * random.randint(int(self.points * 20), 100 + int(self.points * 20))
+        self.vy = random.choice((-1, 1)) * random.randint(int(self.points * 20), 100 + int(self.points * 20))
 
-        self.color = COLORS[randint(0, 5)]
+        self.color = COLORS[random.randint(0, 5)]
         self.image = pygame.draw.circle(screen, self.color, (self.x, self.y), self.r)
 
     def hit(self, event):
@@ -129,12 +129,12 @@ class RussellTeapot:
 
         :param screen: screen, on which the teapot is drawn.
         """
-        self.x = randint(int(W_WIDTH * 0.1), int(W_WIDTH * 0.9))
-        self.y = randint(int(W_HEIGHT * 0.1), int(W_HEIGHT * 0.9))
+        self.x = random.randint(int(W_WIDTH * 0.1), int(W_WIDTH * 0.9))
+        self.y = random.randint(int(W_HEIGHT * 0.1), int(W_HEIGHT * 0.9))
 
         self.a = 15
 
-        self.color = COLORS[randint(0, 5)]
+        self.color = COLORS[random.randint(0, 5)]
 
         self.image = pygame.image.load("teapot.png")
         self.a = self.image.get_width()
@@ -158,7 +158,6 @@ class RussellTeapot:
             self.y %= W_HEIGHT
 
     def draw(self, screen):
-        self.image = pygame.image.load("teapot.png")
         screen.blit(self.image, (int(self.x - self.a/2), int(self.y - self.b/2)))
 
 
