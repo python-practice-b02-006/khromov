@@ -1,122 +1,81 @@
 import pygame
+import numpy as np
 
 FPS = 30
 W_WIDTH, W_HEIGHT = 800, 600
+
 BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+
 TIME_STEP = 0.01
 GRAVITY = 10
 
 
 class Ball:
-    def __init__(self):
-        pass
-
-    def move(self):
-        pass
-
-    def collide(self):
-        pass
-
-    def draw(self, screen):
-        pass
+    pass
 
 
 class Target:
-    def __init__(self):
-        pass
-
-    def collide(self):
-        pass
-
-    def draw(self, screen):
-        pass
-
-    def move(self):
-        pass
+    pass
 
 
 class Gun:
     def __init__(self):
-        pass
-
-    def turn_on(self):
-        pass
-
-    def gain_power(self):
-        pass
-
-    def target(self, event):
-        pass
-
-    def shoot(self):
-        pass
-
-    def move(self):
-        pass
+        self.coords = [30, W_HEIGHT // 2]
+        self.angle = 0
 
     def draw(self, screen):
+        end_pos = [int(self.coords[0] + 20 * np.cos(self.angle)),
+                   int(self.coords[1] + 20 * np.sin(self.angle))]
+        pygame.draw.line(screen, RED, self.coords, end_pos, 5)
+
+    def strike(self):
         pass
+
+    def set_angle(self, mouse_pos):
+        self.angle = np.arctan2(mouse_pos[1] - self.coords[1],
+                                mouse_pos[0] - self.coords[0])
 
 
 class ScoreTable:
-    def __init__(self):
-        pass
-
-    def draw(self, screen):
-        pass
+    pass
 
 
 class Manager:
-    def __init__(self, n_targets=1):
-        self.targets = [Target() for i in range(n_targets)]
+    def __init__(self):
         self.gun = Gun()
-        self.balls = []
+        self.table = ScoreTable()
 
-    def process(self, screen):
-        done = self.handle_events()
-
-        self.move()
-        self.collide()
+    def process(self, events, screen):
+        done = self.handle_events(events)
         self.draw(screen)
-
         return done
-
-    def handle_events(self):
-        done = False
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                done = True
-
-        return done
-
-    def move(self):
-        for ball in self.balls:
-            ball.move()
-        for target in self.targets:
-            target.move()
 
     def draw(self, screen):
         screen.fill(BLACK)
-
-        for ball in self.balls:
-            ball.draw(screen)
-        for target in self.targets:
-            target.draw(screen)
         self.gun.draw(screen)
 
-    def collide(self):
-        for ball in self.balls:
-            ball.collide()
-        for target in self.targets:
-            target.collide()
+    def handle_events(self, events):
+        done = False
+        for event in events:
+            if event.type == pygame.QUIT:
+                done = True
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    self.gun.coords[1] -= 5
+                elif event.key == pygame.K_DOWN:
+                    self.gun.coords[1] += 5
+
+        if pygame.mouse.get_focused():
+            mouse_pos = pygame.mouse.get_pos()
+            self.gun.set_angle(mouse_pos)
+
+        return done
 
 
 def main():
     pygame.init()
     screen = pygame.display.set_mode((W_WIDTH, W_HEIGHT))
-
-    pygame.display.update()
     clock = pygame.time.Clock()
 
     done = False
@@ -125,7 +84,8 @@ def main():
     while not done:
         clock.tick(FPS)
 
-        done = manager.process(screen)
+        done = manager.process(pygame.event.get(), screen)
+        pygame.display.update()
 
     pygame.quit()
 
