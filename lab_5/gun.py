@@ -1,8 +1,9 @@
-import pygame
+import pygame as pg
 import numpy as np
+from random import randint
 
 FPS = 30
-W_WIDTH, W_HEIGHT = 800, 600
+SCREEN_SIZE = [800, 600]
 
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
@@ -12,7 +13,41 @@ GRAVITY = 10
 
 
 class Ball:
-    pass
+    def __init__(self, coord, vel, rad=15, color=None):
+        if color == None:
+            color = (randint(0, 255), randint(0, 255), randint(0, 255))
+        self.color = color
+        self.coord = coord
+        self.vel = vel
+        self.rad = rad
+
+    def draw(self, screen):
+        pg.draw.circle(screen, self.color, self.coord, self.rad)
+
+    def move(self, t_step=1.):
+        for i in range(2):
+            self.coord[i] += int(self.vel[i] * t_step)
+        self.check_walls()
+
+    def check_walls(self):
+        n = [[1, 0], [0, 1]]
+        for i in range(2):
+            if self.coord[i] < self.rad:
+                self.coord[i] = self.rad
+                self.flip_vel(n[i])
+            elif self.coord[i] > SCREEN_SIZE[i] - self.rad:
+                self.coord[i] = SCREEN_SIZE[i] - self.rad
+                self.flip_vel(n[i])
+
+    def flip_vel(self, axis, coef_perp=1., coef_par=1.):
+        vel = np.array(self.vel)
+        n = np.array(axis)
+        n = n / np.linalg.norm(n)
+        vel_perp = vel.dot(n) * n
+        vel_par = vel - vel_perp
+        ans = -vel_perp * coef_perp + vel_par * coef_par
+        print(vel, ans)
+        self.vel = ans.astype(np.int).tolist()
 
 
 class Target:
@@ -20,14 +55,14 @@ class Target:
 
 
 class Gun:
-    def __init__(self):
-        self.coords = [30, W_HEIGHT // 2]
+    def __init__(self, coords=[30, SCREEN_SIZE[1] // 2]):
+        self.coords = coords
         self.angle = 0
 
     def draw(self, screen):
         end_pos = [int(self.coords[0] + 20 * np.cos(self.angle)),
                    int(self.coords[1] + 20 * np.sin(self.angle))]
-        pygame.draw.line(screen, RED, self.coords, end_pos, 5)
+        pg.draw.line(screen, RED, self.coords, end_pos, 5)
 
     def strike(self):
         pass
@@ -45,38 +80,49 @@ class Manager:
     def __init__(self):
         self.gun = Gun()
         self.table = ScoreTable()
+        self.balls = []
+        self.balls.append(Ball([100, 100], [10, 20]))
 
     def process(self, events, screen):
         done = self.handle_events(events)
+
+        self.move()
         self.draw(screen)
+
         return done
 
     def draw(self, screen):
         screen.fill(BLACK)
         self.gun.draw(screen)
+        for ball in self.balls:
+            ball.draw(screen)
+
+    def move(self):
+        for ball in self.balls:
+            ball.move()
 
     def handle_events(self, events):
         done = False
         for event in events:
-            if event.type == pygame.QUIT:
+            if event.type == pg.QUIT:
                 done = True
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
+            elif event.type == pg.KEYDOWN:
+                if event.key == pg.K_UP:
                     self.gun.coords[1] -= 5
-                elif event.key == pygame.K_DOWN:
+                elif event.key == pg.K_DOWN:
                     self.gun.coords[1] += 5
 
-        if pygame.mouse.get_focused():
-            mouse_pos = pygame.mouse.get_pos()
+        if pg.mouse.get_focused():
+            mouse_pos = pg.mouse.get_pos()
             self.gun.set_angle(mouse_pos)
 
         return done
 
 
 def main():
-    pygame.init()
-    screen = pygame.display.set_mode((W_WIDTH, W_HEIGHT))
-    clock = pygame.time.Clock()
+    pg.init()
+    screen = pg.display.set_mode(SCREEN_SIZE)
+    clock = pg.time.Clock()
 
     done = False
 
@@ -84,10 +130,10 @@ def main():
     while not done:
         clock.tick(FPS)
 
-        done = manager.process(pygame.event.get(), screen)
-        pygame.display.update()
+        done = manager.process(pg.event.get(), screen)
+        pg.display.update()
 
-    pygame.quit()
+    pg.quit()
 
 
 if __name__ == "__main__":
