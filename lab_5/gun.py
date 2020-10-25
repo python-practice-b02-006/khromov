@@ -149,7 +149,28 @@ class Gun:
 
 
 class ScoreTable:
-    pass
+    """
+    Manages counting of points and showing them to th player.
+    """
+    def __init__(self, targets_hit=0, balls_used=0):
+        self.targets_hit = targets_hit
+        self.balls_used = balls_used
+        self.score = max(0, self.targets_hit - self.balls_used)
+
+    def draw(self, screen):
+        self.score = max(0, self.targets_hit - self.balls_used)
+
+        font = pg.font.SysFont('Comic Sans MS', 30)
+
+        text_targets_hit = font.render("Targets hit: " + str(self.targets_hit),
+                                       False, (200, 200, 200))
+        text_balls_used = font.render("Balls used: " + str(self.balls_used),
+                                      False, (200, 200, 200))
+        text_score = font.render("Score " + str(self.score),
+                                 False, (200, 200, 200))
+        screen.blit(text_targets_hit, (0, 0))
+        screen.blit(text_balls_used, (0, 50))
+        screen.blit(text_score, (0, 100))
 
 
 class Manager:
@@ -158,29 +179,33 @@ class Manager:
     """
     def __init__(self):
         """
-        Creates a game: guns, balls, targets and a score table.
+        Creates a game: guns, balls, targets and a score table. Creates variables to monitor the state of the game.
         """
         self.gun = Gun()
         self.table = ScoreTable()
         self.balls = []
         self.targets = []
 
+        self.done = False
+        self.up_key_pressed = False
+        self.down_key_pressed = False
+
     def process(self, events, screen):
         """
         Manages the game. If all the targets have been hit, creates new ones.
         """
-        done = self.handle_events(events)
+        self.handle_events(events)
 
         if len(self.targets) == 0 and len(self.balls) == 0:
-            self.targets = [Target([randint(100, SCREEN_SIZE[0] - 30), randint(30, SCREEN_SIZE[1] - 30)])
-                            for i in range(3)]
+            radius = max(int(30 - self.table.score), 3)
+            self.targets = [Target([randint(100, SCREEN_SIZE[0] - 30),
+                                    randint(30, SCREEN_SIZE[1] - 30)],
+                                   rad=radius) for i in range(3)]
 
         self.check_collisions()
         self.check_alive()
         self.move()
         self.draw(screen)
-
-        return done
 
     def draw(self, screen):
         """
@@ -192,6 +217,7 @@ class Manager:
             ball.draw(screen)
         for target in self.targets:
             target.draw(screen)
+        self.table.draw(screen)
 
     def move(self):
         """
@@ -226,32 +252,42 @@ class Manager:
             for ball in self.balls:
                 if target.check_collision(ball):
                     target.is_alive = False
+                    self.table.targets_hit += 1
 
     def handle_events(self, events):
         """
         Handles the events.
         """
-        done = False
+
         for event in events:
             if event.type == pg.QUIT:
-                done = True
+                self.done = True
             elif event.type == pg.KEYDOWN:
                 if event.key == pg.K_UP:
-                    self.gun.coords[1] -= 5
+                    self.up_key_pressed = True
                 elif event.key == pg.K_DOWN:
-                    self.gun.coords[1] += 5
+                    self.down_key_pressed = True
+            elif event.type == pg.KEYUP:
+                if event.key == pg.K_UP:
+                    self.up_key_pressed = False
+                elif event.key == pg.K_DOWN:
+                    self.down_key_pressed = False
             elif event.type == pg.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     self.gun.active = True
             elif event.type == pg.MOUSEBUTTONUP:
                 if event.button == 1:
                     self.balls.append(self.gun.shoot())
+                    self.table.balls_used += 1
+
+        if self.up_key_pressed:
+            self.gun.coords[1] -= 5
+        if self.down_key_pressed:
+            self.gun.coords[1] += 5
 
         if pg.mouse.get_focused():
             mouse_pos = pg.mouse.get_pos()
             self.gun.set_angle(mouse_pos)
-
-        return done
 
 
 def main():
@@ -268,7 +304,9 @@ def main():
     while not done:
         clock.tick(FPS)
 
-        done = manager.process(pg.event.get(), screen)
+        manager.process(pg.event.get(), screen)
+        done = manager.done
+
         pg.display.update()
 
     pg.quit()
