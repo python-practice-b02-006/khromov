@@ -2,26 +2,28 @@ import pygame as pg
 import numpy as np
 from random import randint
 
-FPS = 30
+FPS = 60
 SCREEN_SIZE = [800, 600]
+TIME_STEP = 0.5
 
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
+YELLOW = (255, 255, 0)
 
 
 class Ball:
     """
     Creates balls, manages their movement, collisions, rendering.
     """
-    def __init__(self, coord, vel, rad=15, color=None):
+    def __init__(self, coords, vel, rad=15, color=None):
         """
         Creates a ball with given initial conditions.
         """
         if color is None:
             color = (randint(0, 255), randint(0, 255), randint(0, 255))
         self.color = color
-        self.coord = coord
-        self.vel = vel
+        self.coords = np.array(coords, dtype=int)
+        self.vel = np.array(vel, dtype=float)
         self.rad = rad
         self.is_alive = True
 
@@ -29,18 +31,17 @@ class Ball:
         """
         Draws the ball on the screen.
         """
-        pg.draw.circle(screen, self.color, self.coord, self.rad)
+        pg.draw.circle(screen, self.color, self.coords, self.rad)
 
-    def move(self, t_step=1., g=1.):
+    def move(self, t_step=TIME_STEP, g=1.):
         """
         Moves the ball. Velocity of the ball is also changed due to gravity.
         """
-        self.vel[1] += int(g * t_step)
-        for i in range(2):
-            self.coord[i] += int(self.vel[i] * t_step)
+        self.vel[1] += g * t_step
+        self.coords += (self.vel * t_step).astype(int)
         self.check_walls()
-        if self.vel[0]**2 + self.vel[1]**2 < 2**2 and\
-                self.coord[1] > SCREEN_SIZE[1] - 2*self.rad:
+        if np.linalg.norm(self.vel) < 1 and\
+                self.coords[1] > SCREEN_SIZE[1] - 2 * self.rad:
             self.is_alive = False
 
     def check_walls(self):
@@ -49,24 +50,22 @@ class Ball:
         """
         n = [[1, 0], [0, 1]]
         for i in range(2):
-            if self.coord[i] < self.rad:
-                self.coord[i] = self.rad
+            if self.coords[i] < self.rad:
+                self.coords[i] = self.rad
                 self.flip_vel(n[i])
-            elif self.coord[i] > SCREEN_SIZE[i] - self.rad:
-                self.coord[i] = SCREEN_SIZE[i] - self.rad
+            elif self.coords[i] > SCREEN_SIZE[i] - self.rad:
+                self.coords[i] = SCREEN_SIZE[i] - self.rad
                 self.flip_vel(n[i])
 
     def flip_vel(self, axis, coef_perp=0.8, coef_par=0.9):
         """
         Changes the velocity of the ball as if it collided inelastically with a wall with normal vector "axis".
         """
-        vel = np.array(self.vel)
-        n = np.array(axis)
-        n = n / np.linalg.norm(n)
-        vel_perp = vel.dot(n) * n
-        vel_par = vel - vel_perp
-        ans = -vel_perp * coef_perp + vel_par * coef_par
-        self.vel = ans.astype(np.int).tolist()
+        axis = np.array(axis)
+        axis = axis / np.linalg.norm(axis)
+        vel_perp = self.vel.dot(axis) * axis
+        vel_par = self.vel - vel_perp
+        self.vel = -vel_perp * coef_perp + vel_par * coef_par
 
 
 class Target:
@@ -94,7 +93,7 @@ class Target:
         """
         Checks if the ball collided with the target.
         """
-        distance = (sum((ball.coord[i] - self.coord[i])**2 for i in range(2)))**0.5
+        distance = (sum((ball.coords[i] - self.coord[i]) ** 2 for i in range(2))) ** 0.5
         return distance <= self.rad + ball.rad
 
 
@@ -107,8 +106,8 @@ class Gun:
         Creates a gun with given initial conditions.
         """
         if coords is None:
-            coords = [30, SCREEN_SIZE[1] // 2]
-        self.coords = coords
+            coords = np.array([30, SCREEN_SIZE[1] // 2], dtype=int)
+        self.coords = np.array(coords)
         self.angle = 0
         self.min_pow = min_pow
         self.max_pow = max_pow
@@ -119,9 +118,16 @@ class Gun:
         """
         Draws a gun on the screen.
         """
-        end_pos = [int(self.coords[0] + self.power * np.cos(self.angle)),
-                   int(self.coords[1] + self.power * np.sin(self.angle))]
-        pg.draw.line(screen, RED, self.coords, end_pos, 5)
+        end_pos = np.array([self.coords[0] + self.power * np.cos(self.angle),
+                            self.coords[1] + self.power * np.sin(self.angle)], dtype=int)
+        parallel = end_pos - self.coords
+        normal = np.array([-parallel[1], parallel[0]], dtype=int)
+        normal = np.array(5 * normal / np.linalg.norm(normal), dtype=int)
+
+        vertexes = [self.coords + normal, self.coords - normal,
+                    self.coords - normal + parallel, self.coords + normal + parallel]
+
+        pg.draw.polygon(screen, RED, vertexes)
 
     def shoot(self):
         """
@@ -173,6 +179,72 @@ class ScoreTable:
         screen.blit(text_score, (0, 100))
 
 
+class Wall:
+    def __init__(self, length, width, angle=0, coords=None, color=None):
+        """Creates a wall.
+
+        :param length: length of the wall.
+        :param width: width of the wall.
+        :param angle: angle between the normal and x axis.
+        :param coords: coordinates of the center of the wall.
+        :param color: color of the wall.
+        """
+        if coords is None:
+            coords = [SCREEN_SIZE[0] // 2, SCREEN_SIZE[1] // 2]
+        self.angle = angle
+        self.length = length
+        self.width = width
+        self.coords = np.array(coords, dtype=int)
+
+        self.normal = np.array([np.cos(angle), -np.sin(angle)])
+        self.parallel = np.array([np.sin(angle), np.cos(angle)])
+        self.vertexes = np.array([self.coords + self.width * self.normal / 2 + self.length * self.parallel / 2,
+                                  self.coords - self.width * self.normal / 2 + self.length * self.parallel / 2,
+                                  self.coords - self.width * self.normal / 2 - self.length * self.parallel / 2,
+                                  self.coords + self.width * self.normal / 2 - self.length * self.parallel / 2],
+                                 dtype=int)
+
+        if color is None:
+            self.color = YELLOW
+
+    def draw(self, screen):
+        """
+        Draws the wall on the screen.
+        """
+        pg.draw.polygon(screen, self.color, self.vertexes)
+
+    def collision(self, ball):
+        """
+        Implements an elastic collision with the ball.
+        """
+        ball_coords = np.array([np.dot(ball.coords, self.normal),
+                                np.dot(ball.coords, self.parallel)])
+        wall_coords = np.array([np.dot(self.coords, self.normal),
+                                np.dot(self.coords, self.parallel)])
+
+        if abs(ball_coords[0] - wall_coords[0]) <= self.width / 2:
+            if ball_coords[1] - ball.rad <= wall_coords[1] + self.length / 2 <= ball_coords[1]:
+                ball.coords += (ball.vel * (-TIME_STEP)).astype(int)
+                ball.flip_vel(self.parallel, coef_perp=1, coef_par=1)
+            elif ball_coords[1] + ball.rad >= wall_coords[1] - self.length / 2 >= ball_coords[1]:
+                ball.coords += (ball.vel * (-TIME_STEP)).astype(int)
+                ball.flip_vel(self.parallel, coef_perp=1, coef_par=1)
+        elif abs(ball_coords[1] - wall_coords[1]) <= self.length / 2:
+            if ball_coords[0] - ball.rad <= wall_coords[0] + self.width / 2 <= ball_coords[0]:
+                ball.coords += (ball.vel * (-TIME_STEP)).astype(int)
+                ball.flip_vel(self.normal, coef_perp=1, coef_par=1)
+            elif ball_coords[0] + ball.rad >= wall_coords[0] - self.width / 2 >= ball_coords[0]:
+                ball.coords += (ball.vel * (-TIME_STEP)).astype(int)
+                ball.flip_vel(self.normal, coef_perp=1, coef_par=1)
+        else:
+            for vertex in self.vertexes:
+                distance = np.linalg.norm(ball.coords - vertex)
+                if distance <= ball.rad:
+                    ball.coords += (ball.vel * (-TIME_STEP)).astype(int)
+                    normal = (ball.coords - vertex) / np.linalg.norm(ball.coords - vertex)
+                    ball.flip_vel(normal, coef_perp=1, coef_par=1)
+
+
 class Manager:
     """
     Manages the process of the game.
@@ -185,7 +257,7 @@ class Manager:
         self.table = ScoreTable()
         self.balls = []
         self.targets = []
-
+        self.walls = []
         self.done = False
         self.up_key_pressed = False
         self.down_key_pressed = False
@@ -201,6 +273,10 @@ class Manager:
             self.targets = [Target([randint(100, SCREEN_SIZE[0] - 30),
                                     randint(30, SCREEN_SIZE[1] - 30)],
                                    rad=radius) for i in range(3)]
+            n = 5 + self.table.score // 10
+            self.walls = [Wall(100, 25, coords=[100 + int((SCREEN_SIZE[0] - 200) * (i + 1) / n),
+                                                randint(100, SCREEN_SIZE[1] - 100)],
+                               angle=randint(-90, 90) * np.pi / 180) for i in range(n)]
 
         self.check_collisions()
         self.check_alive()
@@ -218,6 +294,8 @@ class Manager:
         for target in self.targets:
             target.draw(screen)
         self.table.draw(screen)
+        for wall in self.walls:
+            wall.draw(screen)
 
     def move(self):
         """
@@ -254,6 +332,10 @@ class Manager:
                     target.is_alive = False
                     self.table.targets_hit += 1
 
+        for wall in self.walls:
+            for ball in self.balls:
+                wall.collision(ball)
+
     def handle_events(self, events):
         """
         Handles the events.
@@ -263,14 +345,14 @@ class Manager:
             if event.type == pg.QUIT:
                 self.done = True
             elif event.type == pg.KEYDOWN:
-                if event.key == pg.K_UP:
+                if event.key == pg.K_UP or event.key == pg.K_w:
                     self.up_key_pressed = True
-                elif event.key == pg.K_DOWN:
+                elif event.key == pg.K_DOWN or event.key == pg.K_s:
                     self.down_key_pressed = True
             elif event.type == pg.KEYUP:
-                if event.key == pg.K_UP:
+                if event.key == pg.K_UP or event.key == pg.K_w:
                     self.up_key_pressed = False
-                elif event.key == pg.K_DOWN:
+                elif event.key == pg.K_DOWN or event.key == pg.K_s:
                     self.down_key_pressed = False
             elif event.type == pg.MOUSEBUTTONDOWN:
                 if event.button == 1:
@@ -281,9 +363,9 @@ class Manager:
                     self.table.balls_used += 1
 
         if self.up_key_pressed:
-            self.gun.coords[1] -= 5
+            self.gun.coords[1] = max(10, self.gun.coords[1] - 5)
         if self.down_key_pressed:
-            self.gun.coords[1] += 5
+            self.gun.coords[1] = min(SCREEN_SIZE[1] - 10, self.gun.coords[1] + 5)
 
         if pg.mouse.get_focused():
             mouse_pos = pg.mouse.get_pos()
